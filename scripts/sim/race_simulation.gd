@@ -26,6 +26,7 @@ var rng := RandomNumberGenerator.new()
 var first_cp_time: Dictionary = {}
 var fastest_lap: Dictionary = {"time": INF, "car": null, "lap": 0}
 var _accum: float = 0.0
+var _order_timer: float = 0.0
 var _cp_len: float = 0.0
 
 
@@ -103,9 +104,29 @@ func step(dt: float) -> void:
 			c.speed = move_toward(c.speed, 30.0, 10.0 * dt)
 			c.progress += c.speed * dt
 			c.lateral = move_toward(c.lateral, track.width * 0.35, 2.0 * dt)
-	for c in running:
-		_update_car(c, _physically_ahead(c, running), dt)
-	_update_order()
+	var lens := PackedFloat64Array()
+	lens.resize(running.size())
+	for i in running.size():
+		lens[i] = fposmod(running[i].progress, track.length)
+	for i in running.size():
+		# nearest car in front on the track surface (ignores lap count)
+		var best := -1
+		var best_d := INF
+		var my := lens[i]
+		for j in running.size():
+			if j == i:
+				continue
+			var d := lens[j] - my
+			if d < 0.0:
+				d += track.length
+			if d < best_d:
+				best_d = d
+				best = j
+		_update_car(running[i], running[best] if best >= 0 else null, dt)
+	_order_timer -= dt
+	if _order_timer <= 0.0 or checkered:
+		_order_timer = 0.2
+		_update_order()
 	if checkered:
 		var any := false
 		for c in cars:
@@ -113,6 +134,7 @@ func step(dt: float) -> void:
 				any = true
 				break
 		if not any:
+			_update_order()
 			done = true
 			race_finished.emit()
 
@@ -178,20 +200,6 @@ func _update_car(c: RaceCar, ahead: RaceCar, dt: float) -> void:
 
 	_check_corner_mistake(c, idx)
 	_check_sectors_and_laps(c, prev)
-
-
-## Nearest running car in front on the track surface (ignores lap count).
-func _physically_ahead(c: RaceCar, running: Array) -> RaceCar:
-	var best: RaceCar = null
-	var best_d := INF
-	for o in running:
-		if o == c:
-			continue
-		var d := fposmod(o.progress - c.progress, track.length)
-		if d < best_d:
-			best_d = d
-			best = o
-	return best
 
 
 func _gap_metres(c: RaceCar, ahead: RaceCar) -> float:
@@ -347,8 +355,6 @@ func _complete_lap(c: RaceCar) -> void:
 		c.best_lap = lt
 	if lt < fastest_lap["time"]:
 		fastest_lap = {"time": lt, "car": c, "lap": c.laps_done}
-	_check_reliability(c)
-	_radio(c)
 	if c.is_running() and (checkered or c.laps_done >= total_laps):
 		if not checkered:
 			checkered = true
@@ -356,6 +362,9 @@ func _complete_lap(c: RaceCar) -> void:
 		c.finished = true
 		c.finish_time = time
 		c.lateral_target = 0.0
+		return
+	_check_reliability(c)
+	_radio(c)
 
 
 func _roll_lap_variation(c: RaceCar) -> float:

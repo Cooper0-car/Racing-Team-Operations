@@ -42,7 +42,7 @@ def make(i, base, age):
         a["consistency"] -= 6; a["experience"] = min(a["experience"], 35)
     d["attributes"] = {k: clamp(v) for k, v in a.items()}
     ovr = (d["attributes"]["race_pace"] * 2 + d["attributes"]["qualifying_pace"] + d["attributes"]["consistency"] + d["attributes"]["racecraft"]) / 5
-    d["salary"] = int(max(250000, (ovr - 50) ** 2 * 9000 + d["attributes"]["reputation"] * 10000) // 10000 * 10000)
+    d["salary"] = int(max(250000, (ovr - 50) ** 2 * 6000 + d["attributes"]["reputation"] * 10000) // 10000 * 10000)
     d["morale"] = 70
     return d
 

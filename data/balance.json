@@ -19,9 +19,9 @@
     {"id": "high",   "name": "Backed",      "amount": 50000000, "desc": "Wealthy investors. Reputation still starts low."}
   ],
   "car_levels": [
-    {"id": "back",  "name": "Backmarker",   "perf": 54, "rel": 74, "budget_mult": 1.15, "desc": "Slow car, extra cash for development."},
-    {"id": "mid",   "name": "Midfield",     "perf": 62, "rel": 78, "budget_mult": 1.0,  "desc": "Competitive for points on a good day."},
-    {"id": "front", "name": "Front-runner", "perf": 69, "rel": 80, "budget_mult": 0.7,  "desc": "Fast from day one, but most of the money is gone."}
+    {"id": "back",  "name": "Backmarker",   "perf": 57, "rel": 74, "budget_mult": 1.15, "desc": "Slow car, extra cash for development."},
+    {"id": "mid",   "name": "Midfield",     "perf": 65, "rel": 78, "budget_mult": 1.0,  "desc": "Competitive for points on a good day."},
+    {"id": "front", "name": "Front-runner", "perf": 71, "rel": 80, "budget_mult": 0.7,  "desc": "Fast from day one, but most of the money is gone."}
   ],
   "headquarters": [
     {"id": "uk",      "name": "Silverstone, UK",   "travel_mult": 1.0,  "upgrade_cost_mult": 0.95, "desc": "Motorsport valley: cheaper engineering."},
