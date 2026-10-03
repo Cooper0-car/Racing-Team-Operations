@@ -3,7 +3,7 @@ extends RefCounted
 ## Runtime state of one car during a race session.
 
 enum Mode { CONSERVE, NORMAL, PUSH }
-const MODE_NAMES := ["Conserve", "Normal", "Push"]
+const MODE_NAMES := ["Conserve", "Standard", "Push"]
 
 var idx: int = 0
 var driver: Driver
@@ -33,6 +33,9 @@ var pass_timer: float = 0.0         # while > 0, car is alongside / passing (ign
 var pass_target: RaceCar = null
 var blocked: bool = false
 var attempted_zone: int = -1        # overtake zone index already attempted this lap
+var drs_zone: int = -1              # DRS zone currently open for this car
+var drs_checked: int = -1           # last detection point evaluated
+var drs_boost: float = 0.0          # seconds of DRS-assisted overtaking chance left
 var last_corner_checked: int = -1
 var grid_pos: int = 0
 var position: int = 0
@@ -42,7 +45,8 @@ var laps_done: int = 0
 var finished: bool = false
 var finish_time: float = 0.0
 var dnf: bool = false
-var dnf_reason: String = ""
+var dnf_reason: String = ""         # untranslated key, may contain %s
+var dnf_arg: String = ""
 var lap_start_time: float = 0.0
 var lap_times: Array = []
 var best_lap: float = INF
@@ -95,6 +99,20 @@ func mode_risk() -> float:
 		Mode.CONSERVE: return 0.5
 		Mode.PUSH: return 1.8
 	return 1.0
+
+
+func dnf_text() -> String:
+	return tr(dnf_reason) % tr(dnf_arg) if dnf_arg != "" else tr(dnf_reason)
+
+
+func incident_texts() -> Array:
+	var out := []
+	for inc in incidents:
+		var args := []
+		for a in inc[1]:
+			args.append(tr(a) if a is String else a)
+		out.append(tr(inc[0]) % args if args.size() > 0 else tr(inc[0]))
+	return out
 
 
 func total_time() -> float:

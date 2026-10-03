@@ -10,21 +10,21 @@ func _ready() -> void:
 	z_index = 200
 	var v := UI.vbox(6)
 	add_child(v)
-	v.add_child(UI.label("DEBUG MENU (F12)", 14, UI.WARN, true))
-	v.add_child(UI.button("Add $10M", _money))
-	v.add_child(UI.button("Max all player components", _max_car))
-	v.add_child(UI.button("Repair all wear (player)", _repair))
-	v.add_child(UI.button("Player drivers: +10 all attributes", _boost_drivers))
-	v.add_child(UI.button("Skip race (simulate instantly)", _skip_race))
-	v.add_child(UI.button("Race: set player tyre wear 90%", _wear))
-	v.add_child(UI.button("Race: force failure on player car", _fail))
-	v.add_child(UI.button("Race: everyone Push mode", _push_all))
-	v.add_child(UI.button("Reload data files", func(): DataDB.reload(); _msg("Data reloaded")))
-	v.add_child(UI.button("Close", func(): get_parent().toggle_debug()))
+	v.add_child(UI.label(tr("DEBUG MENU (F12)"), 14, UI.WARN, true))
+	v.add_child(UI.button(tr("Add $10M"), _money))
+	v.add_child(UI.button(tr("Max all player components"), _max_car))
+	v.add_child(UI.button(tr("Repair all wear (player)"), _repair))
+	v.add_child(UI.button(tr("Player drivers: +10 all attributes"), _boost_drivers))
+	v.add_child(UI.button(tr("Skip race (simulate instantly)"), _skip_race))
+	v.add_child(UI.button(tr("Race: set player tyre wear 90%"), _wear))
+	v.add_child(UI.button(tr("Race: force failure on player car"), _fail))
+	v.add_child(UI.button(tr("Race: everyone Push mode"), _push_all))
+	v.add_child(UI.button(tr("Reload data files"), func(): DataDB.reload(); TrackData.clear_cache(); _msg("Data reloaded")))
+	v.add_child(UI.button(tr("Close"), func(): get_parent().toggle_debug()))
 
 
 func _msg(t: String) -> void:
-	UI.toast(get_parent(), t, UI.WARN)
+	UI.toast(get_parent(), tr(t), UI.WARN)
 
 
 func _career_ok() -> bool:
@@ -84,6 +84,7 @@ func _skip_race() -> void:
 	if not c.has_qualified():
 		c.run_qualifying(track)
 	var sim := RaceSimulation.new()
+	sim.tick = Game.sim_dt()
 	sim.setup(track, c.grid_entries(), c.race_laps(track), c.rng.randi(), c.player_team_id)
 	sim.run_to_end()
 	var summary := c.apply_race_result(track, sim.results())
@@ -113,7 +114,7 @@ func _fail() -> void:
 		for c in s.cars:
 			if s.is_player_car(c) and c.is_running():
 				s._retire(c, "Debug failure")
-				s._event(c, "failure", "%s retires (debug failure)." % c.driver.last_name)
+				s._event(c, "failure", "%s retires (debug failure).", [c.driver.last_name])
 				return
 
 

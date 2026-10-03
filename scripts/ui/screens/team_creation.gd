@@ -4,7 +4,7 @@ extends Control
 var setup := {
 	"name": "Apex Dynamics", "abbr": "APX", "primary": Color("e10600"), "secondary": Color("ffffff"),
 	"logo_shape": 0, "budget_id": "medium", "hq": "uk", "car_level": "mid", "philosophy": "balanced",
-	"driver_ids": [], "difficulty": "normal",
+	"driver_ids": [], "difficulty": "normal", "calendar": [],
 }
 var logo: TeamLogo
 var info_box: VBoxContainer
@@ -12,6 +12,8 @@ var driver_box: VBoxContainer
 var start_btn: Button
 var budget_lbl: Label
 var free_agents: Array = []
+var cal_btn: Button
+var cal_dialog: AcceptDialog
 
 
 func open(_params: Dictionary) -> void:
@@ -35,7 +37,7 @@ func open(_params: Dictionary) -> void:
 	var top := UI.hbox(12)
 	top.add_child(UI.title("Create your team", 28))
 	top.add_child(UI.spacer())
-	top.add_child(UI.button("Back", func(): Game.goto("menu")))
+	top.add_child(UI.button(tr("Back"), func(): Game.goto("menu")))
 	root.add_child(top)
 
 	var cols := UI.hbox(16)
@@ -47,23 +49,28 @@ func open(_params: Dictionary) -> void:
 	lcard[0].custom_minimum_size.x = 380
 	cols.add_child(lcard[0])
 	var lv: VBoxContainer = lcard[1]
-	lv.add_child(_field("Team name", _line(setup["name"], 28, func(t): setup["name"] = t; _refresh())))
-	lv.add_child(_field("Abbreviation", _line(setup["abbr"], 3, func(t): setup["abbr"] = t.to_upper(); _refresh())))
+	lv.add_child(_field(tr("Team name"), _line(setup["name"], 28, func(t): setup["name"] = t; _refresh())))
+	lv.add_child(_field(tr("Abbreviation"), _line(setup["abbr"], 3, func(t): setup["abbr"] = t.to_upper(); _refresh())))
 	var colors := UI.hbox(10)
-	colors.add_child(UI.label("Colours"))
+	colors.add_child(UI.label(tr("Colours")))
 	colors.add_child(UI.spacer())
 	colors.add_child(_color_btn("primary"))
 	colors.add_child(_color_btn("secondary"))
 	lv.add_child(colors)
-	lv.add_child(_field("Logo", UI.option(TeamLogo.SHAPES, 0, func(i): setup["logo_shape"] = i; _refresh())))
+	lv.add_child(_field(tr("Logo"), UI.option(TeamLogo.SHAPES, 0, func(i): setup["logo_shape"] = i; _refresh())))
 	var bal: Dictionary = DataDB.balance
 	lv.add_child(HSeparator.new())
-	lv.add_child(_field("Budget", _opt(bal["budgets"], "budget_id")))
-	lv.add_child(_field("Headquarters", _opt(bal["headquarters"], "hq")))
-	lv.add_child(_field("Starting car", _opt(bal["car_levels"], "car_level")))
-	lv.add_child(_field("Philosophy", _opt(bal["philosophies"], "philosophy")))
+	lv.add_child(_field(tr("Budget"), _opt(bal["budgets"], "budget_id")))
+	lv.add_child(_field(tr("Headquarters"), _opt(bal["headquarters"], "hq")))
+	lv.add_child(_field(tr("Starting car"), _opt(bal["car_levels"], "car_level")))
+	lv.add_child(_field(tr("Philosophy"), _opt(bal["philosophies"], "philosophy")))
 	var diffs := Career.DIFFICULTY.keys()
-	lv.add_child(_field("Difficulty", UI.option(diffs.map(func(k): return Career.DIFFICULTY[k]["name"]), diffs.find("normal"), func(i): setup["difficulty"] = diffs[i]; _refresh())))
+	lv.add_child(_field(tr("Difficulty"), UI.option(diffs.map(func(k): return Career.DIFFICULTY[k]["name"]), diffs.find("normal"), func(i): setup["difficulty"] = diffs[i]; _refresh())))
+	lv.add_child(HSeparator.new())
+	setup["calendar"] = DataDB.championships[0]["calendar"].duplicate()
+	cal_btn = UI.button("", _open_calendar)
+	lv.add_child(_field(tr("Season calendar"), cal_btn))
+	lv.add_child(UI.note(tr("Add your own tracks from the track creator to the season.")))
 
 	# ---- middle: preview + explanation
 	var mcard: Array = UI.card("Preview")
@@ -94,10 +101,23 @@ func open(_params: Dictionary) -> void:
 
 	var bottom := UI.hbox(10)
 	bottom.add_child(UI.spacer())
-	start_btn = UI.accent_button("Start Career", _start, 220)
+	start_btn = UI.accent_button(tr("Start Career"), _start, 220)
 	bottom.add_child(start_btn)
 	root.add_child(bottom)
+	cal_dialog = AcceptDialog.new()
+	cal_dialog.title = tr("Season calendar")
+	cal_dialog.ok_button_text = tr("Done")
+	var picker := CalendarPicker.new()
+	picker.custom_minimum_size = Vector2(880, 460)
+	picker.setup(setup["calendar"])
+	picker.changed.connect(func(cal): setup["calendar"] = cal.duplicate(); _refresh())
+	cal_dialog.add_child(picker)
+	add_child(cal_dialog)
 	_refresh()
+
+
+func _open_calendar() -> void:
+	cal_dialog.popup_centered(Vector2i(920, 540))
 
 
 func _field(name: String, ctrl: Control) -> HBoxContainer:
@@ -153,19 +173,21 @@ func _salary_total() -> int:
 func _refresh() -> void:
 	logo.set_style(setup["primary"], setup["secondary"], setup["logo_shape"], setup["abbr"])
 	var budget := _starting_budget()
-	budget_lbl.text = "%s\nStarting budget: %s\nDriver salaries: %s / season" % [setup["name"], Fmt.money(budget), Fmt.money(_salary_total())]
+	budget_lbl.text = "%s\n%s: %s\n%s: %s" % [setup["name"], tr("Starting budget"), Fmt.money(budget), tr("Driver salaries / season"), Fmt.money(_salary_total())]
+	if cal_btn:
+		cal_btn.text = tr("%d rounds — edit") % setup["calendar"].size()
 	UI.clear(info_box)
 	var bal: Dictionary = DataDB.balance
 	for pair in [["Budget", bal["budgets"], "budget_id"], ["Headquarters", bal["headquarters"], "hq"], ["Car", bal["car_levels"], "car_level"], ["Philosophy", bal["philosophies"], "philosophy"]]:
 		var e := DataDB.find_in(pair[1], setup[pair[2]])
-		info_box.add_child(UI.label(pair[0] + ": " + e["name"], 14, UI.TEXT))
-		var d := UI.muted(e.get("desc", ""), 13)
+		info_box.add_child(UI.label(tr(pair[0]) + ": " + tr(e["name"]), 14, UI.TEXT))
+		var d := UI.muted(tr(e.get("desc", "")), 13)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info_box.add_child(d)
 	_refresh_drivers()
 	var ok: bool = setup["driver_ids"].size() == 2 and setup["name"].strip_edges() != "" and setup["abbr"].length() >= 2
 	start_btn.disabled = not ok
-	start_btn.tooltip_text = "" if ok else "Pick a name, a 2-3 letter abbreviation and two drivers."
+	start_btn.tooltip_text = "" if ok else tr("Pick a name, a 2-3 letter abbreviation and two drivers.")
 
 
 func _refresh_drivers() -> void:
@@ -177,11 +199,11 @@ func _refresh_drivers() -> void:
 		var picked: bool = d.id in setup["driver_ids"]
 		if picked:
 			hl.append(i)
-		var b := UI.button("Release" if picked else "Sign", _toggle_driver.bind(d.id))
+		var b := UI.button(tr("Release") if picked else tr("Sign"), _toggle_driver.bind(d.id))
 		b.disabled = not picked and setup["driver_ids"].size() >= 2
-		var traits := ", ".join(d.traits)
+		var traits := d.traits_text()
 		rows.append([b, d.full_name(), str(d.age), d.nationality, _rate(d.overall()), _rate(d.attr("qualifying_pace")), _rate(d.attr("race_pace")), _rate(d.attr("consistency")), _rate(d.attr("potential")), traits, Fmt.money(d.salary)])
-	driver_box.add_child(UI.table(["", "Driver", "Age", "Nat", "OVR", "Quali", "Race", "Cons", "Pot", "Traits", "Salary"], rows, [74, 0, 34, 40, 38, 44, 40, 40, 34, 150, 66], hl))
+	driver_box.add_child(UI.table(["", tr("Driver"), tr("Age"), tr("Nat"), tr("OVR"), tr("Quali"), tr("Race"), tr("Cons"), tr("Pot"), tr("Traits"), tr("Salary")], rows, [74, 0, 34, 40, 38, 44, 40, 40, 34, 150, 66], hl))
 
 
 func _rate(v: float) -> Label:

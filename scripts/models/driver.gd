@@ -36,6 +36,10 @@ func short_name() -> String:
 	return last_name.substr(0, 3).to_upper()
 
 
+func traits_text() -> String:
+	return ", ".join(traits.map(func(t): return tr(t)))
+
+
 func attr(key: String) -> float:
 	return float(attributes.get(key, 50))
 

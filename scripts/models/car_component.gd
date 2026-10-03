@@ -15,7 +15,7 @@ func def() -> Dictionary:
 
 
 func display_name() -> String:
-	return def().get("name", id)
+	return tr(def().get("name", id))
 
 
 ## Reliability after wear is taken into account.

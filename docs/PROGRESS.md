@@ -29,18 +29,43 @@
 | Reputation | ✅ | Changes with results, reliability and finances; drives sponsor income |
 | Save / load | ✅ | 5 slots + autosave, atomic writes, menu Continue |
 | Debug menu (F12) | ✅ | Money, max car, repair, boost drivers, skip race, tyre wear, force failure, all-push, reload data |
-| Settings | ✅ (basic) | Autosave, default race speed, UI scale, master volume |
+| Settings | ✅ | Superseded by the v0.2 settings screen (see below) |
+
+## Phase 4 — track creator ✅ (v0.2)
+
+| System | Status | Notes |
+|---|---|---|
+| Track format v2 | ✅ | Per control point: width, runoff, banking, elevation. Start/finish anchor, sectors, DRS zones, pit lane. Older files load with defaults |
+| Editor tools | ✅ | Freehand draw (RDP simplification), select/move, add point (inserted into the nearest segment), delete point, start/finish, sector 2/3, DRS zone (click a straight; it runs to the next braking point), pit entry/exit |
+| Editor actions | ✅ | Templates (circle/oval/square), clear and draw, smooth, scale ±10%, reverse direction, 10 m snap, auto DRS, auto pit lane, flip/remove pit, undo/redo (80 steps), keyboard shortcuts |
+| Live preview | ✅ | Fast rebuild while dragging, full rebuild (with racing line) 0.35 s after the last change. Racing line, braking zones, overtaking zones, elevation colours, bridges, overlap markers |
+| Racing line | ✅ | Multi-resolution minimum-curvature relaxation inside the track limits. Physics uses the racing-line radius, so wider tracks are faster and have more room to pass |
+| Elevation / banking / runoff | ✅ | Slopes change acceleration and braking; banking adds corner grip; runoff under 6 m acts as walls, so mistakes turn into crashes more often. Width changes overtaking chances |
+| Bridges | ✅ | Crossings are allowed when the sections are at least 5 m apart in elevation; the renderer draws the higher section on top with a shadow |
+| DRS | ✅ | Detection 120 m before each zone, within 1 s of the car ahead from lap 2: higher straight-line speed and a better overtaking chance at the next braking zone |
+| Validation | ✅ | Errors (too few points, too short/long, ground-level overlap, bad sectors, pit lane too long) block saving and racing; warnings (tight corners, steep slopes, start line in a corner, no DRS/pit) are advisory |
+| Race mode | ✅ | Switch the editor into a live AI race on the unsaved layout, at 1-8x; switch back to keep editing |
+| Library | ✅ | Built-in + custom tracks, preview, statistics, edit (built-ins as a copy), duplicate, rename, delete, race here |
+| Career integration | ✅ | Pick the season calendar (any valid tracks, up to 24 rounds) when creating a career; edit this season before round 1, or next season's calendar any time. Deleted tracks are replaced automatically |
+| Custom race | ✅ | Any valid track, DRS on/off, grid modes |
+
+## Settings + localisation (v0.2)
+
+- Full settings screen (General / Display / Audio / Race / Controls): language, units (metric/imperial), autosave, UI sounds, window mode, UI scale, graphics quality (high = anti-aliased track edges, low = surface only), V-Sync, master and effects volume, default race speed, default camera, radio filter, racing line in races, simulation detail (30/60 steps per second), key reference.
+- Procedural sound effects (no audio files): clicks, start lights, chequered flag.
+- **Korean is the default language.** Translations are plain JSON (`data/i18n/ko.json`, English source text as keys) loaded at runtime. `tools/extract_strings.py ko` lists strings that still need a translation. Notifications and ledger entries are stored as keys + arguments, so they switch language with the game.
+- Font: Pretendard (SIL Open Font License, `assets/fonts/`), with Godot's built-in font as fallback for symbols.
 
 ## Next phases
 
 - **Phase 2 — management depth:** contract negotiation (salary, length, bonuses, number-1 status), staff (engineers, mechanics, strategist, scouts…), development projects that take weeks, facilities, sponsors with objectives, scouting with uncertainty ranges, driver development via training and staff, AI hiring and firing, transfer market.
 - **Phase 3 — advanced racing:** tyre compounds and strategy, fuel load, pit stops (crew skill, mistakes), weather (dynamic, affects grip and incidents), damage model, safety car / VSC, penalties, team orders, advanced strategy commands.
-- **Phase 4 — track creator:** draw and edit control points, width, start/finish, pit lane, sectors, DRS, elevation, banking, validation, save to `user://tracks/`, library rename/duplicate/delete, custom race on any track. Most of the generation pipeline already exists in `TrackData`.
+- **Phase 4 follow-ups:** multiple layouts per venue, track logo, tunnels, speed trap / detection loop display, user-made championships.
 - **Phase 5 — polish:** audio, animations, tutorial, achievements, balance pass, localisation (strings are already isolated in the UI layer).
 
-## Known limitations (Phase 1)
+## Known limitations
 
-- Single tyre compound, no pit stops, no fuel strategy, weather always clear (Phase 3).
-- Cars follow the centerline with lateral offsets for passing; there is no optimised racing line yet (Phase 4).
+- Single tyre compound, no pit stops, no fuel strategy, weather always clear (Phase 3). Pit lanes are already part of every track and are drawn, but cars only use them once pit stops arrive in Phase 3.
 - Contracts auto-renew at season end (Phase 2).
+- Godot 4.3's Compatibility renderer has no 2D MSAA, so "High" graphics uses anti-aliased edge lines instead.
 - "Sim to end" takes a few seconds on a long race. It runs across frames, so the window stays responsive.

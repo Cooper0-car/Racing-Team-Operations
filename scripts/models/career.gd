@@ -14,6 +14,7 @@ var season: int = 1
 var round_idx: int = 0
 var championship_id: String = ""
 var calendar: Array = []                 # track ids
+var next_calendar: Array = []            # applied at season end (empty = keep current)
 var difficulty: String = "normal"
 var player_team_id: String = ""
 var teams: Dictionary = {}               # id -> Team
@@ -39,6 +40,9 @@ static func create(setup: Dictionary) -> Career:
 	var champ: Dictionary = DataDB.championships[0]
 	c.championship_id = champ["id"]
 	c.calendar = champ["calendar"].duplicate()
+	var custom_cal: Array = setup.get("calendar", [])
+	if not custom_cal.is_empty():
+		c.calendar = custom_cal.duplicate()
 	var diff: Dictionary = DIFFICULTY[c.difficulty]
 	for d in DataDB.drivers:
 		var dr := Driver.from_dict(d)
@@ -90,7 +94,7 @@ static func create(setup: Dictionary) -> Career:
 	c.team_order.insert(0, p.id)
 	c.player_team_id = p.id
 	c._reset_standings()
-	c.notify("Welcome to the %s, %s! First race: %s." % [champ["name"], p.name, c.next_track_name()], "info")
+	c.notify("Welcome to the %s, %s! First race: %s.", [champ["name"], p.name, c.next_track_name()], "info")
 	return c
 
 
@@ -113,6 +117,26 @@ func _reset_standings() -> void:
 
 
 # ------------------------------------------------------------ queries
+
+static func notification_text(n: Dictionary) -> String:
+	if n.has("text"):
+		return str(n["text"])     # saves from v0.1
+	var args := []
+	for a in n.get("args", []):
+		args.append(TranslationServer.translate(a) if a is String else a)
+	var key := TranslationServer.translate(str(n.get("key", "")))
+	return key % args if args.size() > 0 else key
+
+
+## Replaces calendar entries whose track no longer exists (e.g. a deleted custom track).
+func replace_missing_tracks() -> void:
+	var fallback: String = DataDB.championships[0]["calendar"][0]
+	for list in [calendar, next_calendar]:
+		for i in list.size():
+			if not DataDB.tracks.has(list[i]):
+				notify("A track on the calendar was deleted; replaced by %s.", [DataDB.get_track(fallback).get("name", fallback)], "warning")
+				list[i] = fallback
+
 
 func player_team() -> Team:
 	return teams[player_team_id]
@@ -186,8 +210,9 @@ func _count_wins(did: String) -> int:
 	return n
 
 
-func notify(text: String, type: String = "info") -> void:
-	notifications.push_front({"season": season, "round": round_idx, "text": text, "type": type})
+## Notifications store an untranslated key + args, so they follow the current language.
+func notify(key: String, args: Array = [], type: String = "info") -> void:
+	notifications.push_front({"season": season, "round": round_idx, "key": key, "args": args, "type": type})
 	if notifications.size() > 60:
 		notifications.resize(60)
 
@@ -220,9 +245,9 @@ func upgrade_component(team: Team, cid: String) -> bool:
 	c.reliability = maxf(c.reliability - float(DataDB.balance.get("upgrade_reliability_penalty", 2.0)) - float(team.mod("upgrade_rel_penalty_bonus", 0.0)), 5.0)
 	c.wear = 0.0
 	c.level += 1
-	team.finance.add(-cost, "Development", "%s upgrade (Lv %d)" % [c.display_name(), c.level], season, round_idx)
+	team.finance.add(-cost, "Development", "%s upgrade (Lv %d)", season, round_idx, [c.def().get("name", cid), c.level])
 	if team.is_player:
-		notify("%s upgraded to level %d (+%.1f performance)." % [c.display_name(), c.level, gain], "car")
+		notify("%s upgraded to level %d (+%.1f performance).", [c.def().get("name", cid), c.level, snappedf(gain, 0.1)], "car")
 	return true
 
 
@@ -236,7 +261,7 @@ func maintain_component(team: Team, cid: String) -> bool:
 	if cost <= 0 or not team.finance.can_afford(cost):
 		return false
 	team.car.components[cid].wear = 0.0
-	team.finance.add(-cost, "Maintenance", "%s rebuilt" % team.car.components[cid].display_name(), season, round_idx)
+	team.finance.add(-cost, "Maintenance", "%s rebuilt", season, round_idx, [team.car.components[cid].def().get("name", cid)])
 	return true
 
 
@@ -251,7 +276,7 @@ func improve_reliability(team: Team, cid: String) -> bool:
 	if c.reliability >= 99.0 or not team.finance.can_afford(cost):
 		return false
 	c.reliability = minf(c.reliability + 5.0, 99.0)
-	team.finance.add(-cost, "Development", "%s reliability work" % c.display_name(), season, round_idx)
+	team.finance.add(-cost, "Development", "%s reliability work", season, round_idx, [c.def().get("name", cid)])
 	return true
 
 
@@ -322,23 +347,24 @@ func apply_race_result(track: TrackData, results: Array) -> Dictionary:
 		if t.is_player:
 			inc = int(inc * DIFFICULTY[difficulty]["player_income"])
 			sponsor = int(sponsor * DIFFICULTY[difficulty]["player_income"])
-		t.finance.add(inc, "Prize money", "Round %d %s" % [round_idx + 1, track.name], season, round_idx)
-		t.finance.add(sponsor, "Sponsors", "Round %d sponsor payments" % [round_idx + 1], season, round_idx)
+		t.finance.add(inc, "Prize money", "Round %d %s", season, round_idx, [round_idx + 1, track.name])
+		t.finance.add(sponsor, "Sponsors", "Round %d sponsor payments", season, round_idx, [round_idx + 1])
 		var salaries := 0
 		for did in t.driver_ids:
 			salaries += int(drivers[did].salary / rounds)
 		var travel := int(float(bal["travel_cost_per_race"]) * float(t.hq_def().get("travel_mult", 1.0)))
 		var ops := int(bal["base_operations_cost_per_race"])
-		t.finance.add(-salaries, "Driver salaries", "Round %d" % [round_idx + 1], season, round_idx)
-		t.finance.add(-travel, "Travel", "Trip to %s" % track.location, season, round_idx)
+		t.finance.add(-salaries, "Driver salaries", "Round %d", season, round_idx, [round_idx + 1])
+		t.finance.add(-travel, "Travel", "Trip to %s", season, round_idx, [track.location])
 		t.finance.add(-ops, "Operations", "Factory & staff running costs", season, round_idx)
 		var repairs := 0
 		for r in results:
 			if r["team_id"] == tid:
-				for inc_txt in r["incidents"]:
-					if "retired" in inc_txt or "Crash" in inc_txt:
+				for incd in r["incidents"]:
+					var key: String = incd[0] if incd is Array else str(incd)
+					if "retired" in key or key.begins_with("Crash"):
 						repairs += 300000
-					elif "Contact" in inc_txt:
+					elif key.begins_with("Contact"):
 						repairs += 80000
 		if repairs > 0:
 			t.finance.add(-repairs, "Repairs", "Accident damage", season, round_idx)
@@ -361,12 +387,12 @@ func apply_race_result(track: TrackData, results: Array) -> Dictionary:
 	summary["player_income"] = summary["income"][player.id]
 	summary["player_expenses"] = summary["expenses"][player.id]
 	if best == 1:
-		notify("VICTORY at %s!" % track.name, "success")
+		notify("VICTORY at %s!", [track.name], "success")
 	elif best <= 3:
-		notify("Podium at %s (P%d)." % [track.name, best], "success")
-	notify("%s: scored %d points. Income %s, expenses %s." % [track.name, team_round_points[player.id], Fmt.money(summary["player_income"]), Fmt.money(summary["player_expenses"])], "finance")
+		notify("Podium at %s (P%d).", [track.name, best], "success")
+	notify("%s: scored %d points. Income %s, expenses %s.", [track.name, team_round_points[player.id], Fmt.money(summary["player_income"]), Fmt.money(summary["player_expenses"])], "finance")
 	if player.finance.balance < 0:
-		notify("WARNING: team balance is negative! Cut spending or the team will fold.", "warning")
+		notify("WARNING: team balance is negative! Cut spending or the team will fold.", [], "warning")
 	# AI teams react
 	AITeamManager.after_race(self)
 	round_idx += 1
@@ -438,7 +464,7 @@ func end_season() -> Dictionary:
 	for i in st.size():
 		var t: Team = st[i]["team"]
 		var prize := int(prizes[mini(i, prizes.size() - 1)])
-		t.finance.add(prize, "Prize money", "Season %d constructors' P%d" % [season, i + 1], season, round_idx)
+		t.finance.add(prize, "Prize money", "Season %d constructors' P%d", season, round_idx, [season, i + 1])
 		if i == 0:
 			t.reputation = minf(t.reputation + 8.0, 100.0)
 	history.append(summary)
@@ -452,10 +478,14 @@ func end_season() -> Dictionary:
 		if d.contract_years == 0 and d.team_id != "":
 			d.contract_years = 2  # Phase 1: contracts auto-renew; full negotiation comes with Phase 2
 			if d.team_id == player_team_id:
-				notify("%s's contract was extended by 2 seasons." % d.full_name(), "info")
-	notify("Season %d finished. Constructors' position: P%d. Prize money paid." % [season, summary["player_position"]], "success")
+				notify("%s's contract was extended by 2 seasons.", [d.full_name()], "info")
+	notify("Season %d finished. Constructors' position: P%d. Prize money paid.", [season, summary["player_position"]], "success")
 	season += 1
 	round_idx = 0
+	if not next_calendar.is_empty():
+		calendar = next_calendar.duplicate()
+		next_calendar.clear()
+		notify("New calendar: %d rounds this season.", [calendar.size()], "info")
 	_reset_standings()
 	return summary
 
@@ -490,7 +520,7 @@ func to_dict() -> Dictionary:
 		d[did] = drivers[did].to_dict()
 	return {
 		"version": SAVE_VERSION, "season": season, "round_idx": round_idx, "championship_id": championship_id,
-		"calendar": calendar, "difficulty": difficulty, "player_team_id": player_team_id,
+		"calendar": calendar, "next_calendar": next_calendar, "difficulty": difficulty, "player_team_id": player_team_id,
 		"teams": t, "team_order": team_order, "drivers": d,
 		"driver_points": driver_points, "team_points": team_points, "round_results": round_results,
 		"history": history, "notifications": notifications, "weekend": weekend, "rng_state": str(rng.state),
@@ -503,6 +533,7 @@ static func from_dict(data: Dictionary) -> Career:
 	c.round_idx = int(data.get("round_idx", 0))
 	c.championship_id = data.get("championship_id", "")
 	c.calendar = data.get("calendar", []).duplicate()
+	c.next_calendar = data.get("next_calendar", []).duplicate()
 	c.difficulty = data.get("difficulty", "normal")
 	c.player_team_id = data.get("player_team_id", "")
 	for did in data.get("drivers", {}):
@@ -521,6 +552,7 @@ static func from_dict(data: Dictionary) -> Career:
 	if c.weekend.has("round"):
 		c.weekend["round"] = int(c.weekend["round"])
 		c.weekend["season"] = int(c.weekend.get("season", c.season))
+	c.replace_missing_tracks()
 	c.rng.randomize()
 	if data.has("rng_state"):
 		c.rng.state = str(data["rng_state"]).to_int()

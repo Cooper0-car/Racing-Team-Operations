@@ -47,6 +47,62 @@ func reload_tracks() -> void:
 					tracks[t["id"]] = t
 
 
+## Saves a player-made track to user://tracks/<id>.json and refreshes the track list.
+func save_user_track(d: Dictionary) -> bool:
+	DirAccess.make_dir_recursive_absolute(USER_TRACK_DIR)
+	var data := d.duplicate(true)
+	data.erase("builtin")
+	var f := FileAccess.open(USER_TRACK_DIR + str(data["id"]) + ".json", FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(JSON.stringify(data, " "))
+	f.close()
+	reload_tracks()
+	return true
+
+
+func delete_user_track(id: String) -> void:
+	var path := USER_TRACK_DIR + id + ".json"
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	reload_tracks()
+
+
+func is_builtin_track(id: String) -> bool:
+	return bool(tracks.get(id, {}).get("builtin", false))
+
+
+## Unique id for a new custom track.
+func new_track_id(name: String) -> String:
+	var slug := ""
+	for ch in name.to_lower():
+		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+			slug += ch
+		elif slug != "" and not slug.ends_with("_"):
+			slug += "_"
+	slug = slug.trim_suffix("_").substr(0, 24)
+	if slug == "":
+		slug = "track"
+	var id := "custom_" + slug
+	var n := 2
+	while tracks.has(id):
+		id = "custom_%s_%d" % [slug, n]
+		n += 1
+	return id
+
+
+## Track ids sorted: built-in first, then custom, each alphabetically by name.
+func sorted_track_ids() -> Array:
+	var ids := tracks.keys()
+	ids.sort_custom(func(a, b):
+		var ba: bool = tracks[a].get("builtin", false)
+		var bb: bool = tracks[b].get("builtin", false)
+		if ba != bb:
+			return ba
+		return str(tracks[a].get("name", a)) < str(tracks[b].get("name", b)))
+	return ids
+
+
 func get_track(id: String) -> Dictionary:
 	return tracks.get(id, {})
 

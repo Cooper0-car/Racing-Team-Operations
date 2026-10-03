@@ -47,3 +47,28 @@ static func ordinal(n: int) -> String:
 
 static func pct(v: float) -> String:
 	return "%d%%" % int(round(v * 100.0))
+
+
+# ---------------------------------------------------------------- units (Settings → Units)
+
+static func speed(kph: float) -> String:
+	if Game.imperial():
+		return "%d mph" % int(round(kph * 0.621371))
+	return "%d km/h" % int(round(kph))
+
+
+static func km(metres: float) -> String:
+	if Game.imperial():
+		return "%.2f mi" % (metres / 1609.344)
+	return "%.2f km" % (metres / 1000.0)
+
+
+static func metres(m: float) -> String:
+	if Game.imperial():
+		return "%d ft" % int(round(m * 3.28084))
+	return "%d m" % int(round(m))
+
+
+## Translate (usable from static code).
+static func t(key: String) -> String:
+	return TranslationServer.translate(key)

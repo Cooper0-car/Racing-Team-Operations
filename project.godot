@@ -13,6 +13,11 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 DataDB="*res://scripts/autoload/data_db.gd"
 Game="*res://scripts/autoload/game.gd"
 SaveSystem="*res://scripts/autoload/save_system.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+
+[internationalization]
+
+locale/fallback="en"
 
 [display]
 

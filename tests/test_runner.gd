@@ -10,6 +10,10 @@ var checks := 0
 func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	test_tracks()
+	test_track_editing()
+	test_track_features_affect_sim()
+	test_custom_track_career()
+	test_localisation()
 	test_physics_dimensions()
 	test_full_career_loop()
 	test_save_load()
@@ -29,14 +33,147 @@ func test_tracks() -> void:
 	for id in DataDB.tracks:
 		var t := TrackData.load_id(id)
 		var s := t.stats
-		print("  %-16s len %5.0fm corners %2d  ref lap %s  avg %3.0f kph  top %3.0f  OT %2.0f  tyre %2.0f  DF %2.0f  zones %d  problems %s" % [
+		print("  %-16s len %5.0fm corners %2d  ref lap %s  avg %3.0f kph  top %3.0f  OT %2.0f  tyre %2.0f  DF %2.0f  zones %d drs %d pit %3.0fm  %s" % [
 			id, s["length_m"], s["corners"], Fmt.lap_time(s["ref_lap_time"]), s["avg_speed_kph"], s["top_speed_kph"],
-			s["overtaking"], s["tire_wear"], s["downforce"], t.overtake_zones.size(), str(t.validate())])
+			s["overtaking"], s["tire_wear"], s["downforce"], t.overtake_zones.size(), t.drs_zones.size(), s["pit_lane_m"], str(t.validate())])
 		check(t.length > 1000.0, id + " length")
 		check(t.corners.size() >= 2, id + " corners")
-		check(t.validate().is_empty(), id + " valid")
+		check(t.is_valid(), id + " valid")
 		var rt := TrackData.from_dict(t.to_dict())
 		check(absf(rt.length - t.length) < 1.0, id + " roundtrip")
+
+
+func test_track_editing() -> void:
+	print("== track editor operations")
+	var t := TrackData.template("circle")
+	check(t.is_valid(), "template valid")
+	var n := t.points.size()
+	var len0 := t.length
+	# insert / remove keep the start line and features attached
+	var si := t.samples.size() / 3
+	var u := t.sample_u[si]
+	var idx := t.insert_point(int(floor(u)), t.samples[si] + t.normals[si] * 60.0, u - floor(u))
+	t.build()
+	check(t.points.size() == n + 1 and t.length > len0, "insert point grows track")
+	t.remove_point(idx)
+	t.build()
+	check(t.points.size() == n and absf(t.length - len0) < 5.0, "remove point restores length")
+	# reverse twice = identity
+	var d0 := t.to_dict()
+	t.reverse(); t.build(); t.reverse(); t.build()
+	check(absf(t.length - len0) < 1.0 and absf(t.start_u - float(d0["start_u"])) < 0.01, "reverse twice")
+	# freehand stroke -> control points
+	var stroke := PackedVector2Array()
+	for i in 200:
+		var a := TAU * i / 200.0
+		stroke.append(Vector2(cos(a) * (600.0 + 120.0 * sin(3.0 * a)), sin(a) * 400.0))
+	var pts := TrackData.stroke_to_points(stroke)
+	check(pts.size() >= 6 and pts.size() < 60, "stroke simplified (%d pts)" % pts.size())
+	var t2 := TrackData.new()
+	t2.points = pts
+	t2.build()
+	t2.auto_drs(); t2.auto_pit()
+	check(t2.is_valid(), "drawn track valid: " + str(t2.validate()))
+	# figure-8: crossing at ground level is an error, with 8 m elevation it's a bridge
+	var f8 := TrackData.new()
+	for i in 16:
+		var a := TAU * i / 16.0
+		f8.points.append(Vector2(sin(a) * 700.0, sin(2.0 * a) * 300.0))
+	f8.build()
+	check(not f8.overlaps.is_empty() and not f8.is_valid(), "flat figure-8 overlaps")
+	f8.pt_elev = PackedFloat32Array()
+	for i in 16:
+		f8.pt_elev.append(8.0 * sin(TAU * i / 16.0 + PI / 2.0) + 8.0)
+	f8.build()
+	check(f8.overlaps.is_empty() and f8.crossings.size() >= 1, "figure-8 with elevation has a bridge (%d)" % f8.crossings.size())
+	# save -> load roundtrip through the database
+	t2.name = "Test Loop"
+	t2.id = DataDB.new_track_id(t2.name)
+	check(DataDB.save_user_track(t2.to_dict()), "save user track")
+	var t3 := TrackData.load_id(t2.id)
+	check(t3 != null and absf(t3.length - t2.length) < 1.0 and t3.drs_zones.size() == t2.drs_zones.size() and not t3.pit.is_empty(), "user track roundtrip")
+	DataDB.delete_user_track(t2.id)
+	check(not DataDB.tracks.has(t2.id), "user track deleted")
+
+
+func test_track_features_affect_sim() -> void:
+	print("== track features change the physics")
+	var p := PerformanceModel.reference_params()
+	var base := TrackData.template("oval")
+	var lap_line := PerformanceModel.lap_time(base, base.ref_profile)
+	var center := TrackData.from_dict(base.to_dict(), false)
+	var lap_center := PerformanceModel.lap_time(center, PerformanceModel.speed_profile(center, p))
+	print("  racing line %.3f s vs centerline %.3f s" % [lap_line, lap_center])
+	check(lap_line < lap_center - 0.2, "racing line is faster than the centerline")
+	var banked := TrackData.from_dict(base.to_dict())
+	for i in banked.pt_bank.size():
+		banked.pt_bank[i] = 15.0
+	banked.build()
+	var lap_bank := PerformanceModel.lap_time(banked, banked.ref_profile)
+	print("  banked 15deg %.3f s" % lap_bank)
+	check(lap_bank < lap_line - 0.2, "banking makes corners faster")
+	var hilly := TrackData.from_dict(base.to_dict())
+	for i in hilly.pt_elev.size():
+		hilly.pt_elev[i] = 30.0 * sin(TAU * i / hilly.pt_elev.size())
+	hilly.build()
+	# climbs and descents change local speeds (up and down largely cancel over a lap, like in reality)
+	var max_dv := 0.0
+	for i in mini(hilly.ref_profile.size(), base.ref_profile.size()):
+		max_dv = maxf(max_dv, absf(hilly.ref_profile[i] - base.ref_profile[i]))
+	print("  elevation: max local speed change %.1f m/s" % max_dv)
+	check(max_dv > 1.5, "elevation changes speeds along the lap")
+	var narrow := TrackData.from_dict(base.to_dict())
+	narrow.set_all_width(9.0)
+	narrow.build()
+	var wide := TrackData.from_dict(base.to_dict())
+	wide.set_all_width(24.0)
+	wide.build()
+	check(PerformanceModel.lap_time(wide, wide.ref_profile) < PerformanceModel.lap_time(narrow, narrow.ref_profile), "wider track allows a faster line")
+	check(wide.stats["overtaking"] > narrow.stats["overtaking"], "wider track is easier to overtake on")
+
+
+func test_custom_track_career() -> void:
+	print("== custom track in a career calendar")
+	var t := TrackData.template("square")
+	t.name = "Career Test Ring"
+	t.id = DataDB.new_track_id(t.name)
+	DataDB.save_user_track(t.to_dict())
+	var setup := make_setup()
+	setup["calendar"] = [t.id, "speedway"]
+	var c := Career.create(setup)
+	check(c.calendar.size() == 2 and c.next_track_id() == t.id, "custom calendar")
+	var track := TrackData.load_id(c.next_track_id())
+	c.run_qualifying(track)
+	var sim := RaceSimulation.new()
+	sim.setup(track, c.grid_entries(), 4, 99, c.player_team_id)
+	sim.run_to_end()
+	check(sim.done, "race on custom track finished")
+	var drs_used := 0
+	for car in sim.cars:
+		drs_used += 1 if car.drs_checked >= 0 else 0
+	check(drs_used > 0, "DRS detection used on custom track")
+	c.apply_race_result(track, sim.results())
+	check(c.round_idx == 1 and c.round_results[0]["track_id"] == t.id, "result recorded for custom track")
+	c.next_calendar = ["harbor_park"]
+	DataDB.delete_user_track(t.id)
+	c.replace_missing_tracks()
+	check(DataDB.tracks.has(c.calendar[0]), "deleted track replaced on calendar")
+	c.round_idx = c.calendar.size()
+	c.end_season()
+	check(c.calendar == ["harbor_park"], "next season calendar applied")
+
+
+func test_localisation() -> void:
+	print("== localisation")
+	var prev := TranslationServer.get_locale()
+	TranslationServer.set_locale("ko")
+	check(TranslationServer.translate("Settings") == "설정", "ko: Settings")
+	check(TranslationServer.translate("Engine") == "엔진", "ko: Engine")
+	var n := {"key": "VICTORY at %s!", "args": ["Harbor Park"], "season": 1, "round": 0, "type": "success"}
+	check(Career.notification_text(n) == "Harbor Park 우승!", "ko notification: " + Career.notification_text(n))
+	TranslationServer.set_locale("en")
+	check(Career.notification_text(n) == "VICTORY at Harbor Park!", "en notification")
+	TranslationServer.set_locale(prev)
 
 
 func test_physics_dimensions() -> void:

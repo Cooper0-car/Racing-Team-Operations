@@ -23,6 +23,8 @@ var finish_btn: Button
 var _tower_timer := 0.0
 var _results_applied := false
 var fast_forward := false
+var _last_light := 99
+var _flag_played := false
 
 
 func open(params: Dictionary) -> void:
@@ -33,6 +35,7 @@ func open(params: Dictionary) -> void:
 		track = TrackData.load_id(params["track_id"])
 		player_team_id = career.player_team_id
 		sim = RaceSimulation.new()
+		sim.tick = Game.sim_dt()
 		sim.setup(track, career.grid_entries(), career.race_laps(track), career.rng.randi(), player_team_id)
 	else:
 		sim = params["sim"]
@@ -40,7 +43,13 @@ func open(params: Dictionary) -> void:
 		player_team_id = sim.player_team_id
 	sim.event_added.connect(_on_event)
 	_build()
-	_add_feed_line({"time": 0.0, "lap": 1, "type": "flag", "text": "Lights out in 3 seconds... %d laps of %s." % [sim.total_laps, track.name], "player": false})
+	_add_feed_line({"time": 0.0, "lap": 1, "type": "flag", "text": tr("Lights out in 3 seconds... %d laps of %s.") % [sim.total_laps, track.name], "player": false})
+	if Game.settings.get("race_camera", "track") == "player":
+		for c in sim.cars:
+			if c.team.id == player_team_id:
+				view.follow_idx = c.idx
+				cam_opt.select(c.idx + 1)
+				break
 
 
 func _build() -> void:
@@ -51,27 +60,28 @@ func _build() -> void:
 	var tb := UI.hbox(10)
 	root.add_child(UI.panel(tb, UI.PANEL, 8))
 	tb.add_child(UI.label(track.name.to_upper(), 18, UI.TEXT, true))
-	lap_lbl = UI.label("LAP 1/%d" % sim.total_laps, 18, UI.ACCENT, true)
+	lap_lbl = UI.label(tr("LAP %d/%d") % [1, sim.total_laps], 18, UI.ACCENT, true)
 	tb.add_child(lap_lbl)
 	time_lbl = UI.label("0:00.0", 16, UI.MUTED)
 	tb.add_child(time_lbl)
-	tb.add_child(UI.label("Weather: Clear", 14, UI.MUTED))
+	tb.add_child(UI.label(tr("Weather: Clear"), 14, UI.MUTED))
+	tb.add_child(UI.label("DRS" if sim.drs_enabled and not track.drs_zones.is_empty() else "", 14, UI.GOOD))
 	tb.add_child(UI.spacer())
-	tb.add_child(UI.muted("Camera"))
-	var cams := ["Whole track"]
+	tb.add_child(UI.muted(tr("Camera")))
+	var cams := [tr("Whole track")]
 	for c in sim.cars:
-		cams.append("Follow " + c.driver.last_name + (" ★" if c.team.id == player_team_id else ""))
+		cams.append(tr("Follow %s") % c.driver.last_name + (" ★" if c.team.id == player_team_id else ""))
 	cam_opt = UI.option(cams, 0, func(i): view.follow_idx = i - 1; view.queue_redraw())
 	tb.add_child(cam_opt)
-	tb.add_child(UI.muted("Speed"))
+	tb.add_child(UI.muted(tr("Speed")))
 	for s in SPEEDS:
 		var b := UI.button("❚❚" if s == 0 else "%dx" % s, _set_speed.bind(s))
 		speed_buttons[s] = b
 		tb.add_child(b)
-	var skip := UI.button("Sim to end", _sim_to_end)
-	skip.tooltip_text = "Simulate the rest of the race instantly."
+	var skip := UI.button(tr("Sim to end"), _sim_to_end)
+	skip.tooltip_text = tr("Simulate the rest of the race instantly.")
 	tb.add_child(skip)
-	finish_btn = UI.accent_button("Results ▶", _go_results)
+	finish_btn = UI.accent_button(tr("Results ▶"), _go_results)
 	finish_btn.visible = false
 	tb.add_child(finish_btn)
 	_set_speed(speed)
@@ -87,7 +97,7 @@ func _build() -> void:
 	for c in sim.cars:
 		if c.team.id == player_team_id:
 			left.add_child(_player_panel(c))
-	left.add_child(UI.label("RACE CONTROL & RADIO", 12, UI.MUTED, true))
+	left.add_child(UI.label(tr("RACE CONTROL & RADIO"), 12, UI.MUTED, true))
 	feed = UI.vbox(4)
 	feed_scroll = UI.scroll(feed)
 	feed_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -101,6 +111,7 @@ func _build() -> void:
 	view.set_track(track)
 	view.sim = sim
 	view.highlight_team = player_team_id
+	view.show_line = bool(Game.settings.get("show_racing_line", false))
 	center.add_child(view)
 	lights_lbl = UI.label("", 64, UI.ACCENT, true)
 	lights_lbl.set_anchors_preset(Control.PRESET_CENTER)
@@ -112,7 +123,7 @@ func _build() -> void:
 	body.add_child(UI.panel(tower, UI.PANEL, 8))
 	var head := UI.hbox(4)
 	for h in [["P", 26], ["", 4], ["DRIVER", 70], ["GAP", 78], ["INT", 56], ["LAST", 72], ["TYRE", 40], ["", 60]]:
-		var l := UI.label(h[0], 11, UI.MUTED)
+		var l := UI.label(tr(h[0]) if h[0] != "" else "", 11, UI.MUTED)
 		l.custom_minimum_size.x = h[1]
 		head.add_child(l)
 	tower.add_child(head)
@@ -137,7 +148,7 @@ func _build() -> void:
 		p.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _follow_position(idx))
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		tower_rows.append({"panel": p, "cells": cells})
-	tower.add_child(UI.muted("Click a row to follow that car. Purple = fastest lap.", 11))
+	tower.add_child(UI.note(tr("Click a row to follow that car. Purple = fastest lap. Green ring = DRS open."), 11))
 
 
 func _player_panel(c: RaceCar) -> PanelContainer:
@@ -163,7 +174,7 @@ func _player_panel(c: RaceCar) -> PanelContainer:
 	var mh := UI.hbox(4)
 	var btns := []
 	for m in 3:
-		var b := UI.button(RaceCar.MODE_NAMES[m], _set_mode.bind(c.idx, m))
+		var b := UI.button(tr(RaceCar.MODE_NAMES[m]), _set_mode.bind(c.idx, m))
 		UI.expand(b)
 		mh.add_child(b)
 		btns.append(b)
@@ -216,7 +227,7 @@ func _process(delta: float) -> void:
 		var t0 := Time.get_ticks_usec()
 		while not sim.done and Time.get_ticks_usec() - t0 < 25000:
 			sim.step(RaceSimulation.DT)
-		lights_lbl.text = "SIMULATING…  LAP %d/%d" % [mini(sim.order[0].laps_done + 1, sim.total_laps), sim.total_laps]
+		lights_lbl.text = tr("SIMULATING…  LAP %d/%d") % [mini(sim.order[0].laps_done + 1, sim.total_laps), sim.total_laps]
 		lights_lbl.add_theme_font_size_override("font_size", 32)
 		_update_tower()
 		return
@@ -224,8 +235,15 @@ func _process(delta: float) -> void:
 	if sim.time < 0.0:
 		var lit := clampi(int(ceil(-sim.time)), 0, 3)
 		lights_lbl.text = "●".repeat(4 - lit) + "○".repeat(lit - 1) if lit > 0 else ""
+		if lit != _last_light:
+			_last_light = lit
+			if lit > 0:
+				Sfx.play("light")
 	elif sim.time < 1.5:
-		lights_lbl.text = "GO!"
+		if _last_light != 0:
+			_last_light = 0
+			Sfx.play("go")
+		lights_lbl.text = tr("GO!")
 	else:
 		lights_lbl.text = ""
 	_tower_timer -= delta
@@ -237,7 +255,10 @@ func _process(delta: float) -> void:
 
 func _update_tower() -> void:
 	var leader: RaceCar = sim.order[0]
-	lap_lbl.text = "LAP %d/%d" % [mini(leader.laps_done + 1, sim.total_laps), sim.total_laps] if not sim.checkered else "FINISH"
+	lap_lbl.text = tr("LAP %d/%d") % [mini(leader.laps_done + 1, sim.total_laps), sim.total_laps] if not sim.checkered else tr("FINISH")
+	if sim.checkered and not _flag_played:
+		_flag_played = true
+		Sfx.play("flag")
 	time_lbl.text = Fmt.race_time(maxf(sim.time, 0.0))
 	for i in sim.order.size():
 		var c: RaceCar = sim.order[i]
@@ -259,17 +280,17 @@ func _update_tower() -> void:
 		cells[6].add_theme_color_override("font_color", UI.BAD if c.tire_wear > 0.75 else (UI.WARN if c.tire_wear > 0.5 else UI.GOOD))
 		var status := ""
 		if c.dnf:
-			status = "OUT"
+			status = tr("OUT")
 		elif c.finished:
-			status = "🏁"
+			status = tr("FIN")
 		elif c.incident_time > 0.0 and c.incident_factor < 0.6:
-			status = "INCIDENT"
+			status = tr("INCIDENT")
 		elif c.pass_timer > 0.0:
-			status = "ATTACK"
+			status = tr("ATTACK")
 		elif c.mode == RaceCar.Mode.PUSH:
-			status = "PUSH"
+			status = tr("PUSH")
 		elif c.mode == RaceCar.Mode.CONSERVE:
-			status = "SAVE"
+			status = tr("SAVE")
 		cells[7].text = status
 		cells[7].add_theme_color_override("font_color", UI.BAD if c.dnf else UI.MUTED)
 		var bg := Color(c.team.primary, 0.22) if player else (UI.PANEL2 if i % 2 == 0 else UI.PANEL)
@@ -279,11 +300,11 @@ func _update_tower() -> void:
 func _refresh_player_panels() -> void:
 	for pp in player_panels:
 		var c: RaceCar = pp["car"]
-		pp["pos"].text = "OUT" if c.dnf else "P%d" % c.position
+		pp["pos"].text = tr("OUT") if c.dnf else "P%d" % c.position
 		var last := Fmt.lap_time(c.lap_times[-1]) if c.lap_times.size() > 0 else "-"
-		var status := c.dnf_reason if c.dnf else ("Finished" if c.finished else "Lap %d" % c.current_lap())
-		pp["info"].text = "%s  ·  Last %s  ·  Best %s  ·  Grid P%d" % [status, last, Fmt.lap_time(c.best_lap), c.grid_pos]
-		pp["sectors"].text = "Sectors  %s  %s  %s   ·  Tyres %d%%" % [Fmt.sector(c.last_sectors[0]), Fmt.sector(c.last_sectors[1]), Fmt.sector(c.last_sectors[2]), int((1.0 - c.tire_wear) * 100.0)]
+		var status := c.dnf_text() if c.dnf else (tr("Finished") if c.finished else tr("Lap %d") % c.current_lap())
+		pp["info"].text = tr("%s  ·  Last %s  ·  Best %s  ·  Grid P%d") % [status, last, Fmt.lap_time(c.best_lap), c.grid_pos]
+		pp["sectors"].text = tr("Sectors  %s  %s  %s   ·  Tyres %d%%") % [Fmt.sector(c.last_sectors[0]), Fmt.sector(c.last_sectors[1]), Fmt.sector(c.last_sectors[2]), int((1.0 - c.tire_wear) * 100.0)]
 		pp["tyre"].value = (1.0 - c.tire_wear) * 100.0
 		var fill := UI._box(UI.BAD if c.tire_wear > 0.75 else (UI.WARN if c.tire_wear > 0.5 else UI.GOOD), Color(0, 0, 0, 0), 0, 3, 0, 0)
 		pp["tyre"].add_theme_stylebox_override("fill", fill)
@@ -301,6 +322,13 @@ func _on_event(ev: Dictionary) -> void:
 
 
 func _add_feed_line(ev: Dictionary) -> void:
+	# Settings → Race → radio filter
+	var filt := str(Game.settings.get("radio", "all"))
+	var important: bool = ev["type"] in ["flag", "incident", "failure"] or ev.get("player", false)
+	if filt == "important" and not important:
+		return
+	if filt == "player" and not (ev.get("player", false) or ev["type"] == "flag"):
+		return
 	var col := UI.MUTED
 	match ev["type"]:
 		"radio": col = UI.CYAN

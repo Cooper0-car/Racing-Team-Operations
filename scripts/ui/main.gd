@@ -9,6 +9,8 @@ const SCREENS := {
 	"results": preload("res://scripts/ui/screens/race_results.gd"),
 	"library": preload("res://scripts/ui/screens/track_library.gd"),
 	"custom_race": preload("res://scripts/ui/screens/custom_race.gd"),
+	"editor": preload("res://scripts/ui/screens/track_editor.gd"),
+	"settings": preload("res://scripts/ui/screens/settings_screen.gd"),
 }
 
 var current: Control
@@ -24,7 +26,7 @@ func _ready() -> void:
 	add_child(bg)
 	Game.screen_requested.connect(_on_screen_requested)
 	Game.apply_settings()
-	_on_screen_requested("menu", {})
+	Game.goto("menu")
 
 
 func _on_screen_requested(screen: String, params: Dictionary) -> void:

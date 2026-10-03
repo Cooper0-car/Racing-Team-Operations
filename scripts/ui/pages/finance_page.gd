@@ -21,14 +21,14 @@ func build(hub) -> void:
 	var travel := int(DataDB.balance["travel_cost_per_race"] * float(t.hq_def().get("travel_mult", 1.0)))
 	var ops := int(DataDB.balance["base_operations_cost_per_race"])
 	var sponsor := int(float(DataDB.balance["base_sponsor_per_race_at_rep_50"]) * (0.4 + t.reputation / 50.0 * 0.6) * float(t.hq_bonus().get("sponsor_mult", 1.0)) * float(Career.DIFFICULTY[c.difficulty]["player_income"]))
-	bal[1].add_child(UI.label("Projected per race", 14, UI.MUTED))
-	bal[1].add_child(UI.label("Sponsors  +%s" % Fmt.money(sponsor), 14, UI.GOOD))
-	bal[1].add_child(UI.label("Prize money  depends on results (P20 %s … P1 %s per car)" % [Fmt.money(DataDB.balance["prize_per_position"][19]), Fmt.money(DataDB.balance["prize_per_position"][0])], 14, UI.GOOD))
-	bal[1].add_child(UI.label("Driver salaries  -%s" % Fmt.money(salaries), 14, UI.BAD))
-	bal[1].add_child(UI.label("Travel  -%s" % Fmt.money(travel), 14, UI.BAD))
-	bal[1].add_child(UI.label("Operations  -%s" % Fmt.money(ops), 14, UI.BAD))
+	bal[1].add_child(UI.label(tr("Projected per race"), 14, UI.MUTED))
+	bal[1].add_child(UI.label("%s  +%s" % [tr("Sponsors"), Fmt.money(sponsor)], 14, UI.GOOD))
+	bal[1].add_child(UI.note(tr("Prize money depends on results (P20 %s … P1 %s per car)") % [Fmt.money(DataDB.balance["prize_per_position"][19]), Fmt.money(DataDB.balance["prize_per_position"][0])]))
+	bal[1].add_child(UI.label("%s  -%s" % [tr("Driver salaries"), Fmt.money(salaries)], 14, UI.BAD))
+	bal[1].add_child(UI.label("%s  -%s" % [tr("Travel"), Fmt.money(travel)], 14, UI.BAD))
+	bal[1].add_child(UI.label("%s  -%s" % [tr("Operations"), Fmt.money(ops)], 14, UI.BAD))
 
-	var sea: Array = UI.card("Season %d by category" % c.season)
+	var sea: Array = UI.card(tr("Season %d by category") % c.season)
 	UI.expand(sea[0])
 	row.add_child(sea[0])
 	var sm := t.finance.summary(c.season)
@@ -38,7 +38,7 @@ func build(hub) -> void:
 		if k == "Start":
 			continue
 		var h := UI.hbox()
-		h.add_child(UI.label(k, 14))
+		h.add_child(UI.label(tr(k), 14))
 		h.add_child(UI.spacer())
 		h.add_child(UI.label(Fmt.money(sm[k]), 14, UI.GOOD if sm[k] >= 0 else UI.BAD))
 		sea[1].add_child(h)
@@ -56,14 +56,14 @@ func build(hub) -> void:
 		vals.push_front(running / 1000000.0)
 		running -= per_round.get(r, 0)
 	vals.push_front(running / 1000000.0)
-	var ch: Array = UI.card("Balance trend ($M), season %d" % c.season)
+	var ch: Array = UI.card(tr("Balance trend ($M), season %d") % c.season)
 	UI.expand(ch[0])
 	row.add_child(ch[0])
 	var chart := LineChart.new()
-	chart.x_label = "Round"
+	chart.x_label = tr("Round")
 	chart.y_format = "%.1f"
 	chart.custom_minimum_size = Vector2(320, 200)
-	chart.set_series([{"name": "Balance", "color": UI.GOOD, "values": vals}])
+	chart.set_series([{"name": tr("Balance"), "color": UI.GOOD, "values": vals}])
 	ch[1].add_child(chart)
 
 	var led: Array = UI.card("Transactions")
@@ -75,8 +75,8 @@ func build(hub) -> void:
 	for e in entries.slice(0, 80):
 		if int(e["amount"]) == 0:
 			continue
-		rows.append(["S%d R%d" % [e["season"], int(e["round"]) + 1], e["category"], e["note"], UI.label(Fmt.money(int(e["amount"])), 14, UI.GOOD if int(e["amount"]) >= 0 else UI.BAD)])
-	var sc := UI.scroll(UI.table(["When", "Category", "Description", "Amount"], rows, [70, 150, 0, 100]))
+		rows.append(["S%d R%d" % [e["season"], int(e["round"]) + 1], tr(e["category"]), Finance.note_text(e), UI.label(Fmt.money(int(e["amount"])), 14, UI.GOOD if int(e["amount"]) >= 0 else UI.BAD)])
+	var sc := UI.scroll(UI.table([tr("When"), tr("Category"), tr("Description"), tr("Amount")], rows, [70, 150, 0, 100]))
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	led[1].size_flags_vertical = Control.SIZE_EXPAND_FILL
 	led[1].add_child(sc)

@@ -53,12 +53,14 @@ static func decel_at(p: Dictionary, v: float) -> float:
 	return G * (p["mu_brake"] + p["c_aero"] * v * v * 1.1) * p["grip"]
 
 
-static func corner_speed(p: Dictionary, r: float) -> float:
+## bank_deg: banking angle; it adds tan(angle) to the available lateral grip.
+static func corner_speed(p: Dictionary, r: float, bank_deg: float = 0.0) -> float:
 	var gm: float = p["grip"]
+	var mu: float = p["mu_mech"] * gm + tan(deg_to_rad(clampf(absf(bank_deg), 0.0, 45.0)))
 	var denom: float = 1.0 - r * G * p["c_aero"] * gm
 	if denom < 0.04:
 		return p["vmax"]
-	return minf(sqrt(r * G * p["mu_mech"] * gm / denom), p["vmax"])
+	return minf(sqrt(r * G * mu / denom), p["vmax"])
 
 
 ## Max achievable speed at every track sample, respecting braking and acceleration limits.
@@ -68,22 +70,30 @@ static func speed_profile(track: TrackData, p: Dictionary) -> PackedFloat32Array
 	v.resize(m)
 	if m == 0:
 		return v
+	var has_bank := track.bank_at.size() == m
+	var has_grade := track.grade_at.size() == m
 	for i in m:
-		v[i] = corner_speed(p, track.radius[i])
+		v[i] = corner_speed(p, track.radius[i], track.bank_at[i] if has_bank else 0.0)
 	var ds := track.step
-	# backward pass (braking), twice around for the closed loop
+	# backward pass (braking), twice around for the closed loop. Uphill helps braking.
 	for pass_i in 2:
 		for jj in m:
 			var i := m - 1 - jj
 			var nxt := v[(i + 1) % m]
-			var lim := sqrt(nxt * nxt + 2.0 * decel_at(p, nxt) * ds)
+			var g := track.grade_at[i] if has_grade else 0.0
+			var lim := sqrt(nxt * nxt + 2.0 * maxf(decel_at(p, nxt) + G * g, 2.0) * ds)
 			if v[i] > lim:
 				v[i] = lim
-	# forward pass (acceleration)
+	# forward pass (acceleration). Uphill costs acceleration, downhill adds to it.
 	for pass_i in 2:
 		for i in m:
 			var cur := v[i]
-			var lim := sqrt(cur * cur + 2.0 * accel_at(p, cur) * ds)
+			var g2 := track.grade_at[i] if has_grade else 0.0
+			# net acceleration may be negative on steep climbs (the car slows down uphill)
+			var net := maxf(accel_at(p, cur) - G * g2, -4.0)
+			if net >= 0.0:
+				net = maxf(net, 0.15)
+			var lim := sqrt(maxf(cur * cur + 2.0 * net * ds, 1.0))
 			var j := (i + 1) % m
 			if v[j] > lim:
 				v[j] = lim

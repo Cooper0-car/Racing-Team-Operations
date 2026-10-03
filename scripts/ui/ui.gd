@@ -17,12 +17,18 @@ const PURPLE := Color("b26bff")
 const CYAN := Color("3fc1ff")
 
 static var _theme: Theme
+static var font_regular: Font
+static var font_bold: Font
 
 
 static func theme() -> Theme:
 	if _theme:
 		return _theme
 	var t := Theme.new()
+	font_regular = _load_font("res://assets/fonts/Pretendard-Regular.otf")
+	font_bold = _load_font("res://assets/fonts/Pretendard-Bold.otf")
+	if font_regular:
+		t.default_font = font_regular
 	t.default_font_size = 15
 	t.set_color("font_color", "Label", TEXT)
 	t.set_color("font_color", "Button", TEXT)
@@ -54,8 +60,28 @@ static func theme() -> Theme:
 	t.set_stylebox("panel", "ScrollContainer", StyleBoxEmpty.new())
 	t.set_stylebox("panel", "TooltipPanel", _box(PANEL3, LINE, 1, 4, 8, 6))
 	t.set_stylebox("separator", "HSeparator", _line_box())
+	for cb in ["CheckButton", "CheckBox"]:
+		t.set_stylebox("normal", cb, _box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 4, 4, 4))
+		t.set_stylebox("pressed", cb, _box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 4, 4, 4))
+		t.set_stylebox("hover", cb, _box(Color(1, 1, 1, 0.04), Color(0, 0, 0, 0), 0, 4, 4, 4))
+		t.set_stylebox("hover_pressed", cb, _box(Color(1, 1, 1, 0.04), Color(0, 0, 0, 0), 0, 4, 4, 4))
+		t.set_stylebox("focus", cb, StyleBoxEmpty.new())
+		t.set_color("font_color", cb, TEXT)
+		t.set_color("font_pressed_color", cb, TEXT)
+		t.set_color("font_hover_color", cb, Color.WHITE)
+		t.set_color("font_hover_pressed_color", cb, Color.WHITE)
 	_theme = t
 	return t
+
+
+## Pretendard covers Hangul + Latin; Godot's built-in font is the fallback for symbols.
+static func _load_font(path: String) -> Font:
+	if not ResourceLoader.exists(path):
+		return null
+	var f = load(path)
+	if f is FontFile:
+		f.fallbacks = [ThemeDB.fallback_font]
+	return f
 
 
 static func _box(bg: Color, border: Color, bw: int, radius: int, px: int, py: int) -> StyleBoxFlat:
@@ -89,14 +115,13 @@ static func label(text: String, size: int = 15, color: Color = TEXT, bold: bool 
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
-	if bold:
-		l.add_theme_constant_override("outline_size", 1)
-		l.add_theme_color_override("font_outline_color", color)
+	if bold and font_bold:
+		l.add_theme_font_override("font", font_bold)
 	return l
 
 
 static func title(text: String, size: int = 26) -> Label:
-	return label(text.to_upper(), size, TEXT, true)
+	return label(Fmt.t(text).to_upper(), size, TEXT, true)
 
 
 static func muted(text: String, size: int = 13) -> Label:
@@ -114,6 +139,7 @@ static func note(text: String, size: int = 13) -> Label:
 static func button(text: String, cb: Callable, min_w: int = 0) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.pressed.connect(func(): Sfx.play("click"))
 	b.pressed.connect(cb)
 	if min_w > 0:
 		b.custom_minimum_size.x = min_w
@@ -152,7 +178,7 @@ static func panel(child: Control = null, bg: Color = PANEL, pad: int = 12) -> Pa
 static func card(heading: String, bg: Color = PANEL) -> Array:
 	var v := vbox(8)
 	if heading != "":
-		v.add_child(label(heading.to_upper(), 12, MUTED, true))
+		v.add_child(label(Fmt.t(heading).to_upper(), 12, MUTED, true))
 	var p := panel(v, bg)
 	return [p, v]
 
@@ -194,6 +220,7 @@ static func stat_bar(name: String, value: float, max_value: float = 100.0, col: 
 	var h := hbox(8)
 	var n := label(name, 13, MUTED)
 	n.custom_minimum_size.x = name_w
+	n.clip_text = true
 	h.add_child(n)
 	var bar := ProgressBar.new()
 	bar.max_value = max_value
@@ -273,7 +300,7 @@ static func clear(node: Node) -> void:
 static func option(items: Array, selected: int, cb: Callable) -> OptionButton:
 	var o := OptionButton.new()
 	for it in items:
-		o.add_item(str(it))
+		o.add_item(Fmt.t(str(it)))
 	o.select(selected)
 	o.item_selected.connect(cb)
 	return o
@@ -281,7 +308,7 @@ static func option(items: Array, selected: int, cb: Callable) -> OptionButton:
 
 ## Modal-ish message popup.
 static func toast(parent: Node, text: String, col: Color = ACCENT) -> void:
-	var p := panel(label(text, 15), PANEL3)
+	var p := panel(label(Fmt.t(text), 15), PANEL3)
 	p.add_theme_stylebox_override("panel", _box(PANEL3, col, 2, 6, 16, 10))
 	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	p.position.y = 70
@@ -292,3 +319,39 @@ static func toast(parent: Node, text: String, col: Color = ACCENT) -> void:
 	tw.tween_interval(2.2)
 	tw.tween_property(p, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(p.queue_free)
+
+
+## Display name for a performance dimension key (e.g. "top_speed" -> "Top Speed", translated).
+static func dim_name(key: String) -> String:
+	return Fmt.t(key.capitalize())
+
+
+## Labelled row used in forms: name on the left, control expanding on the right.
+static func form_row(name: String, ctrl: Control, name_w: int = 150) -> HBoxContainer:
+	var h := hbox(10)
+	var l := label(name, 14)
+	l.custom_minimum_size.x = name_w
+	h.add_child(l)
+	expand(ctrl)
+	h.add_child(ctrl)
+	return h
+
+
+static func slider(min_v: float, max_v: float, step_v: float, value: float, cb: Callable, w: int = 180) -> HSlider:
+	var sl := HSlider.new()
+	sl.min_value = min_v
+	sl.max_value = max_v
+	sl.step = step_v
+	sl.value = value
+	sl.custom_minimum_size.x = w
+	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sl.value_changed.connect(cb)
+	return sl
+
+
+static func check(text: String, on: bool, cb: Callable) -> CheckButton:
+	var c := CheckButton.new()
+	c.text = text
+	c.button_pressed = on
+	c.toggled.connect(cb)
+	return c

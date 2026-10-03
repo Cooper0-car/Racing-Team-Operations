@@ -42,17 +42,16 @@ func open(params: Dictionary) -> void:
 	UI.expand(content, true, true)
 	body.add_child(content)
 	for p in PAGES:
-		var b := UI.button(p[1], show_page.bind(p[0]))
+		var b := UI.button(tr(p[1]), show_page.bind(p[0]))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		nav.add_child(b)
 		nav_buttons[p[0]] = b
 	nav.add_child(UI.spacer(false))
-	var lib := UI.button("Track Library", func(): Game.goto("library", {"back": "hub"}))
-	lib.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	nav.add_child(lib)
-	var menu := UI.button("Main Menu", _to_menu)
-	menu.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	nav.add_child(menu)
+	for extra in [["Track Creator", func(): Game.goto("editor", {"back": "hub"})], ["Track Library", func(): Game.goto("library", {"back": "hub"})],
+			["Settings", func(): Game.goto("settings", {"back": "hub", "back_params": {"page": current_page}})], ["Main Menu", _to_menu]]:
+		var eb := UI.button(tr(extra[0]), extra[1])
+		eb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		nav.add_child(eb)
 	show_page(params.get("page", "dashboard"))
 
 
@@ -62,24 +61,24 @@ func refresh_top_bar() -> void:
 	top_bar.add_child(TeamLogo.make(t, 44))
 	var nm := UI.vbox(0)
 	nm.add_child(UI.label(t.name, 20, UI.TEXT, true))
-	nm.add_child(UI.muted("%s  ·  %s" % [DataDB.get_championship(career.championship_id).get("name", ""), Career.DIFFICULTY[career.difficulty]["name"]], 12))
+	nm.add_child(UI.muted("%s  ·  %s" % [tr(DataDB.get_championship(career.championship_id).get("name", "")), tr(Career.DIFFICULTY[career.difficulty]["name"])], 12))
 	top_bar.add_child(nm)
 	top_bar.add_child(UI.spacer())
-	_stat(top_bar, "SEASON", "%d" % career.season)
-	_stat(top_bar, "ROUND", "%d / %d" % [mini(career.round_idx + 1, career.calendar.size()), career.calendar.size()])
-	_stat(top_bar, "POSITION", "P%d" % career.team_position(t.id))
-	_stat(top_bar, "POINTS", "%d" % career.team_points.get(t.id, 0))
-	_stat(top_bar, "REPUTATION", "%d" % int(t.reputation))
-	_stat(top_bar, "BALANCE", Fmt.money(t.finance.balance), UI.GOOD if t.finance.balance >= 0 else UI.BAD)
+	_stat(top_bar, "Season", "%d" % career.season)
+	_stat(top_bar, "Round", "%d / %d" % [mini(career.round_idx + 1, career.calendar.size()), career.calendar.size()])
+	_stat(top_bar, "Position", "P%d" % career.team_position(t.id))
+	_stat(top_bar, "Points", "%d" % career.team_points.get(t.id, 0))
+	_stat(top_bar, "Reputation", "%d" % int(t.reputation))
+	_stat(top_bar, "Balance", Fmt.money(t.finance.balance), UI.GOOD if t.finance.balance >= 0 else UI.BAD)
 	if career.is_season_over():
-		top_bar.add_child(UI.accent_button("End Season ▶", _end_season))
+		top_bar.add_child(UI.accent_button(tr("End Season ▶"), _end_season))
 	else:
-		top_bar.add_child(UI.accent_button("Race Weekend ▶", show_page.bind("weekend")))
+		top_bar.add_child(UI.accent_button(tr("Race Weekend ▶"), show_page.bind("weekend")))
 
 
 func _stat(parent: Control, name: String, value: String, col: Color = UI.TEXT) -> void:
 	var v := UI.vbox(0)
-	v.add_child(UI.muted(name, 11))
+	v.add_child(UI.muted(tr(name).to_upper(), 11))
 	v.add_child(UI.label(value, 18, col, true))
 	parent.add_child(v)
 
@@ -112,7 +111,8 @@ func _end_season() -> void:
 	var s := career.end_season()
 	Game.autosave()
 	show_page("dashboard")
-	UI.toast(self, "Season %d complete — Champion: %s (%s). You finished P%d." % [s["season"], s["driver_champion"], s["team_champion"], s["player_position"]], UI.GOOD)
+	UI.toast(self, tr("Season %d complete — Champion: %s (%s). You finished P%d.") % [s["season"], s["driver_champion"], s["team_champion"], s["player_position"]], UI.GOOD)
+	Sfx.play("flag")
 
 
 func _to_menu() -> void:
