@@ -1,0 +1,149 @@
+{
+ "_doc": "AI teams. perf/rel = starting component ratings.",
+ "teams": [
+  {
+   "id": "team_valkyr",
+   "name": "Valkyr Racing",
+   "abbr": "VAL",
+   "primary": "#c8102e",
+   "secondary": "#f2c94c",
+   "budget": 95000000,
+   "perf": 72,
+   "rel": 82,
+   "philosophy": "balanced",
+   "reputation": 85,
+   "drivers": [
+    "drv_000",
+    "drv_001"
+   ]
+  },
+  {
+   "id": "team_aurora",
+   "name": "Aurora Motorsport",
+   "abbr": "AUR",
+   "primary": "#1f6feb",
+   "secondary": "#e6edf3",
+   "budget": 88000000,
+   "perf": 71,
+   "rel": 84,
+   "philosophy": "reliability",
+   "reputation": 80,
+   "drivers": [
+    "drv_002",
+    "drv_003"
+   ]
+  },
+  {
+   "id": "team_kestrel",
+   "name": "Kestrel GP",
+   "abbr": "KES",
+   "primary": "#f57c00",
+   "secondary": "#1b1b1b",
+   "budget": 70000000,
+   "perf": 68,
+   "rel": 79,
+   "philosophy": "aggressive_dev",
+   "reputation": 70,
+   "drivers": [
+    "drv_004",
+    "drv_005"
+   ]
+  },
+  {
+   "id": "team_nordlys",
+   "name": "Nordlys Engineering",
+   "abbr": "NOR",
+   "primary": "#2e7d32",
+   "secondary": "#c5e1a5",
+   "budget": 60000000,
+   "perf": 66,
+   "rel": 83,
+   "philosophy": "race",
+   "reputation": 62,
+   "drivers": [
+    "drv_006",
+    "drv_007"
+   ]
+  },
+  {
+   "id": "team_solaris",
+   "name": "Solaris Team",
+   "abbr": "SOL",
+   "primary": "#fbc02d",
+   "secondary": "#3e2723",
+   "budget": 52000000,
+   "perf": 64,
+   "rel": 78,
+   "philosophy": "qualifying",
+   "reputation": 55,
+   "drivers": [
+    "drv_008",
+    "drv_009"
+   ]
+  },
+  {
+   "id": "team_ironclad",
+   "name": "Ironclad Racing",
+   "abbr": "IRC",
+   "primary": "#78909c",
+   "secondary": "#263238",
+   "budget": 45000000,
+   "perf": 62,
+   "rel": 81,
+   "philosophy": "reliability",
+   "reputation": 50,
+   "drivers": [
+    "drv_010",
+    "drv_011"
+   ]
+  },
+  {
+   "id": "team_vortex",
+   "name": "Vortex Speed",
+   "abbr": "VTX",
+   "primary": "#8e24aa",
+   "secondary": "#f3e5f5",
+   "budget": 40000000,
+   "perf": 61,
+   "rel": 76,
+   "philosophy": "aggressive_dev",
+   "reputation": 45,
+   "drivers": [
+    "drv_012",
+    "drv_013"
+   ]
+  },
+  {
+   "id": "team_corsa",
+   "name": "Scuderia Corsa",
+   "abbr": "COR",
+   "primary": "#00838f",
+   "secondary": "#ffffff",
+   "budget": 34000000,
+   "perf": 59,
+   "rel": 77,
+   "philosophy": "balanced",
+   "reputation": 40,
+   "drivers": [
+    "drv_014",
+    "drv_015"
+   ]
+  },
+  {
+   "id": "team_redline",
+   "name": "Redline Privateers",
+   "abbr": "RDL",
+   "primary": "#e91e63",
+   "secondary": "#212121",
+   "budget": 28000000,
+   "perf": 57,
+   "rel": 74,
+   "philosophy": "race",
+   "reputation": 32,
+   "drivers": [
+    "drv_016",
+    "drv_017"
+   ]
+  }
+ ]
+}

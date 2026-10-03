@@ -1,0 +1,12 @@
+{
+  "_doc": "Championship definitions. calendar = list of track ids (built-in or custom). laps_scale multiplies each track's default laps.",
+  "championships": [
+    {
+      "id": "formula_regional",
+      "name": "Formula Regional Championship",
+      "class": "formula",
+      "calendar": ["harbor_park", "old_town", "alpine_ring", "speedway", "coastal_esses", "desert_sprint"],
+      "laps_scale": 1.0
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "_doc": "Global tuning values. Edit freely; the game reads everything from here.",
+  "points": [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
+  "prize_per_position": [1200000, 950000, 800000, 680000, 580000, 500000, 430000, 370000, 320000, 280000, 240000, 210000, 185000, 165000, 150000, 140000, 130000, 120000, 110000, 100000],
+  "season_team_prize": [12000000, 9500000, 8000000, 6800000, 5800000, 5000000, 4300000, 3700000, 3200000, 2800000],
+  "base_sponsor_per_race_at_rep_50": 900000,
+  "travel_cost_per_race": 220000,
+  "base_operations_cost_per_race": 350000,
+  "maintenance_cost_per_wear": 120000,
+  "upgrade_step_perf": 3.0,
+  "upgrade_reliability_penalty": 2.0,
+  "upgrade_cost_growth": 0.12,
+  "component_wear_per_race": 0.08,
+  "reputation_start": 35,
+
+  "budgets": [
+    {"id": "low",    "name": "Shoestring",  "amount": 18000000, "desc": "Tight money. Every decision hurts."},
+    {"id": "medium", "name": "Established", "amount": 30000000, "desc": "A workable budget for a new team."},
+    {"id": "high",   "name": "Backed",      "amount": 50000000, "desc": "Wealthy investors. Reputation still starts low."}
+  ],
+  "car_levels": [
+    {"id": "back",  "name": "Backmarker",   "perf": 54, "rel": 74, "budget_mult": 1.15, "desc": "Slow car, extra cash for development."},
+    {"id": "mid",   "name": "Midfield",     "perf": 62, "rel": 78, "budget_mult": 1.0,  "desc": "Competitive for points on a good day."},
+    {"id": "front", "name": "Front-runner", "perf": 69, "rel": 80, "budget_mult": 0.7,  "desc": "Fast from day one, but most of the money is gone."}
+  ],
+  "headquarters": [
+    {"id": "uk",      "name": "Silverstone, UK",   "travel_mult": 1.0,  "upgrade_cost_mult": 0.95, "desc": "Motorsport valley: cheaper engineering."},
+    {"id": "italy",   "name": "Maranello, Italy",  "travel_mult": 0.95, "upgrade_cost_mult": 1.0,  "desc": "Central Europe, passionate fans (+reputation)."},
+    {"id": "germany", "name": "Cologne, Germany",  "travel_mult": 0.95, "upgrade_cost_mult": 0.98, "desc": "Reliable manufacturing (+reliability)."},
+    {"id": "usa",     "name": "Charlotte, USA",    "travel_mult": 1.35, "upgrade_cost_mult": 1.0,  "desc": "Big sponsor market, long trips."},
+    {"id": "japan",   "name": "Suzuka, Japan",     "travel_mult": 1.4,  "upgrade_cost_mult": 0.97, "desc": "Strong electronics know-how, long trips."}
+  ],
+  "hq_bonus": {
+    "italy":   {"reputation": 5},
+    "germany": {"reliability": 3},
+    "usa":     {"sponsor_mult": 1.2},
+    "japan":   {"component_bonus": {"electronics": 6}}
+  },
+  "philosophies": [
+    {"id": "balanced",      "name": "Balanced",               "desc": "No strengths, no weaknesses.", "mods": {}},
+    {"id": "aggressive_dev","name": "Aggressive Development",  "desc": "Upgrades 15% cheaper and give +1 extra performance, but each upgrade costs extra reliability.", "mods": {"upgrade_cost_mult": 0.85, "upgrade_perf_bonus": 1.0, "upgrade_rel_penalty_bonus": 1.5}},
+    {"id": "reliability",   "name": "Reliability Focused",     "desc": "+8 reliability on all parts, -2 performance.", "mods": {"start_rel": 8, "start_perf": -2}},
+    {"id": "qualifying",    "name": "Qualifying Focused",      "desc": "Drivers gain on one-lap pace, cars eat tyres faster.", "mods": {"quali_bonus": 0.004, "tire_wear_mult": 1.12}},
+    {"id": "race",          "name": "Race Focused",            "desc": "Better tyre life and race pace, weaker in qualifying.", "mods": {"tire_wear_mult": 0.88, "race_bonus": 0.002, "quali_bonus": -0.003}},
+    {"id": "academy",       "name": "Young Driver Academy",    "desc": "Young drivers cost 25% less and develop faster.", "mods": {"young_salary_mult": 0.75, "young_dev_mult": 1.5}},
+    {"id": "long_term",     "name": "Long-term Development",   "desc": "+20% budget, -3 car performance at start.", "mods": {"budget_mult": 1.2, "start_perf": -3}}
+  ],
+  "ai_philosophies": ["balanced", "aggressive_dev", "reliability", "race", "qualifying"]
+}

@@ -1,0 +1,23 @@
+{
+  "_doc": "Car components. 'dims' = how much this component's performance rating contributes to each performance dimension (weights are normalized per dimension). base_cost = price of one upgrade step at level 0. weight_kg = baseline mass.",
+  "dimensions": ["top_speed", "acceleration", "braking", "low_speed_cornering", "high_speed_cornering", "traction", "tire_usage", "stability", "aero_efficiency", "fuel_efficiency", "wet_performance"],
+  "components": [
+    {"id": "engine",          "name": "Engine",           "weight_kg": 150, "base_cost": 900000, "dims": {"top_speed": 3.0, "acceleration": 3.0, "fuel_efficiency": 1.5}},
+    {"id": "turbo",           "name": "Turbo",            "weight_kg": 20,  "base_cost": 450000, "dims": {"top_speed": 1.0, "acceleration": 1.5}},
+    {"id": "gearbox",         "name": "Gearbox",          "weight_kg": 40,  "base_cost": 400000, "dims": {"acceleration": 1.5, "traction": 1.0}},
+    {"id": "suspension",      "name": "Suspension",       "weight_kg": 35,  "base_cost": 380000, "dims": {"low_speed_cornering": 2.5, "traction": 1.5, "stability": 2.0, "tire_usage": 1.0}},
+    {"id": "brakes",          "name": "Brakes",           "weight_kg": 25,  "base_cost": 300000, "dims": {"braking": 3.0, "stability": 0.5}},
+    {"id": "front_wing",      "name": "Front Wing",       "weight_kg": 8,   "base_cost": 350000, "dims": {"high_speed_cornering": 1.5, "low_speed_cornering": 1.0, "aero_efficiency": 1.0}},
+    {"id": "rear_wing",       "name": "Rear Wing",        "weight_kg": 8,   "base_cost": 350000, "dims": {"high_speed_cornering": 1.5, "top_speed": 0.8, "aero_efficiency": 1.5, "stability": 0.5}},
+    {"id": "floor",           "name": "Floor",            "weight_kg": 15,  "base_cost": 500000, "dims": {"high_speed_cornering": 2.5, "aero_efficiency": 2.0, "wet_performance": 0.5}},
+    {"id": "diffuser",        "name": "Diffuser",         "weight_kg": 6,   "base_cost": 380000, "dims": {"high_speed_cornering": 1.5, "traction": 0.5, "aero_efficiency": 1.0}},
+    {"id": "chassis",         "name": "Chassis",          "weight_kg": 90,  "base_cost": 700000, "dims": {"stability": 2.0, "low_speed_cornering": 1.0, "high_speed_cornering": 1.0, "braking": 0.5}},
+    {"id": "cooling",         "name": "Cooling",          "weight_kg": 18,  "base_cost": 220000, "dims": {"aero_efficiency": 0.5, "fuel_efficiency": 0.5}},
+    {"id": "electronics",     "name": "Electronics",      "weight_kg": 12,  "base_cost": 300000, "dims": {"traction": 1.5, "fuel_efficiency": 1.0, "wet_performance": 1.0}},
+    {"id": "fuel_system",     "name": "Fuel System",      "weight_kg": 14,  "base_cost": 200000, "dims": {"fuel_efficiency": 2.0, "acceleration": 0.3}},
+    {"id": "exhaust",         "name": "Exhaust",          "weight_kg": 10,  "base_cost": 180000, "dims": {"top_speed": 0.4, "acceleration": 0.4, "traction": 0.3}},
+    {"id": "steering",        "name": "Steering",         "weight_kg": 6,   "base_cost": 150000, "dims": {"low_speed_cornering": 0.8, "stability": 0.8, "wet_performance": 0.5}},
+    {"id": "weight_reduction","name": "Weight Reduction", "weight_kg": 0,   "base_cost": 420000, "dims": {"acceleration": 1.0, "braking": 0.8, "low_speed_cornering": 0.5, "tire_usage": 0.5}},
+    {"id": "tire_package",    "name": "Tire Package",     "weight_kg": 40,  "base_cost": 260000, "dims": {"tire_usage": 3.0, "traction": 1.0, "low_speed_cornering": 0.5, "wet_performance": 1.5}}
+  ]
+}
